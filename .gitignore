@@ -22,4 +22,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-/src/pages
+/src/pages/Book.js
+/src/pages/Main.js
+/src/pages/Media.js
