@@ -70,9 +70,7 @@ return() => {
 
   const handleDragEnd = useCallback(() => {
     setDragging(null);
-    if (dragNode.current) {
       dragNode.current.removeEventListener("dragend", handleDragEnd);
-    }
     dragItem.current = null;
     dragNode.current = null;
   }, []);
