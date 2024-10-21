@@ -16,41 +16,47 @@ const Page = () => {
   const dragNode = useRef(null);
 
   // Load saved columns from localStorage when the page loads
+  useEffect(() => {
+    const savedItem = localStorage.getItem("todoColumn");
+    if (savedItem) {
+      try {
+        setColumns(JSON.parse(savedItem));
+      } catch (error) {
+        console.log("Can't get items saved", error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    const savedItem = localStorage.getItem("todoColumn")
-    if(savedItem) {
-        try {
-            setColumns(JSON.parse(savedItem))
-        } catch (error) {
-            console.log("Can't get items saved",error)
-        }
+    try {
+      localStorage.setItem("todoColumn", JSON.stringify(columns));
+    } catch (error) {
+      console.log("Error occurred trying to save items", error);
     }
-},[])
+    return () => {
+      localStorage.removeItem("todoColumn");
+    };
+  }, [columns]);
 
-useEffect(() => {
-try {
-    localStorage.setItem("todoColumn",JSON.stringify(columns))
-    
-} catch (error) {
-    console.log("Error occured tring to save items", error)
-}
-return() => {
-    localStorage.removeItem("todoColumn")
-}
-},[columns])
-
+  // Handle drag or touch start
   const handleDragStart = useCallback((e, item, columnId) => {
-      dragItem.current = { item, columnId };
-      dragNode.current = e.target;
-    //   console.log(dragNode.current)
-    dragNode.current.addEventListener("dragend", handleDragEnd);
+    e.preventDefault();
+    dragItem.current = { item, columnId };
+    dragNode.current = e.target;
     setTimeout(() => {
       setDragging(item);
     }, 0);
   }, []);
 
+  const handleTouchStart = useCallback((e, item, columnId) => {
+    handleDragStart(e, item, columnId);
+  }, [handleDragStart]);
+
+  // Handle drag enter for desktop or drop for mobile
   const handleDragEnter = useCallback((e, targetColumnId) => {
+    e.preventDefault();
+    if (!dragItem.current) return;
+
     setColumns((prevColumns) => {
       const newColumns = { ...prevColumns };
       const sourceColumnId = dragItem.current?.columnId;
@@ -58,11 +64,13 @@ return() => {
       const sourceColumn = newColumns[sourceColumnId];
       const targetColumn = newColumns[targetColumnId];
 
+      // Remove item from source column and add to target
       sourceColumn.items = sourceColumn.items.filter(
         (item) => item.id !== dragItem.current.item.id
       );
       targetColumn.items.push(dragItem.current.item);
 
+      // Update dragItem's column ID
       dragItem.current = { ...dragItem.current, columnId: targetColumnId };
       return newColumns;
     });
@@ -70,10 +78,13 @@ return() => {
 
   const handleDragEnd = useCallback(() => {
     setDragging(null);
-      dragNode.current.removeEventListener("dragend", handleDragEnd);
     dragItem.current = null;
     dragNode.current = null;
   }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    handleDragEnd();
+  }, [handleDragEnd]);
 
   const addNewItem = useCallback(() => {
     if (newItemText.trim() !== "") {
@@ -148,13 +159,14 @@ return() => {
           Add Item
         </button>
       </div>
-      <div className="flex space-x-4">
+      <div className="flex flex-wrap space-x-4">
         {Object.values(columns).map((column) => (
           <div
             key={column.id}
             className="bg-gray-100 p-4 rounded-lg w-64"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => handleDragEnter(e, column.id)}
+            onTouchEnd={handleTouchEnd}
           >
             <h2 className="font-bold mb-2 text-gray-600">{column.title}</h2>
             <ul>
@@ -162,8 +174,8 @@ return() => {
                 <li
                   key={item.id}
                   draggable
-                  ref={dragItem}
                   onDragStart={(e) => handleDragStart(e, item, column.id)}
+                  onTouchStart={(e) => handleTouchStart(e, item, column.id)}
                   className={getItemStyles(item)}
                 >
                   {editingItemId === item.id ? (
